@@ -46,7 +46,7 @@ public class HighlightButton extends Button {
             Ae2PatternHighlighter.LOGGER.info("HighlightButton clicked! Item: {}", 
                 entry.getWhat().getDisplayName().getString());
             
-            // 发送网络请求，包含物品信息
+            // 直接发送高亮请求
             ModNetworkHandler.sendToServer(new RequestHighlightPacket(entry.getWhat(), 0));
             
             // 关闭当前GUI

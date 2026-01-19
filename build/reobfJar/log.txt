@@ -135,7 +135,14 @@ Adding Libraries to Inheritance
 Reading Input: D:\Project\MOD\Minecraft\AE2\ae2-pattern-highlighter\build\libs\ae2patternhighlighter-1.0.0.jar
 Adding input to inheritance map
 Processing entries
+Conflicting propagated mapping for com/ae2addon/highlighter/client/camera/CameraOverlayScreen/keyPressed(III)Z from net/minecraft/client/gui/screens/Screen/keyPressed(III)Z: keyPressed -> m_7933_
+Conflicting propagated mapping for com/ae2addon/highlighter/client/camera/CameraOverlayScreen/isPauseScreen()Z from net/minecraft/client/gui/screens/Screen/isPauseScreen()Z: isPauseScreen -> m_7043_
+Conflicting propagated mapping for com/ae2addon/highlighter/client/camera/CameraOverlayScreen/render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V from net/minecraft/client/gui/screens/Screen/render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V: render -> m_88315_
+Conflicting propagated mapping for com/ae2addon/highlighter/client/camera/CameraOverlayScreen/init()V from net/minecraft/client/gui/screens/Screen/init()V: init -> m_7856_
+Conflicting propagated mapping for com/ae2addon/highlighter/client/CameraButton/mouseClicked(DDI)Z from net/minecraft/client/gui/components/AbstractWidget/mouseClicked(DDI)Z: mouseClicked -> m_6375_
 Conflicting propagated mapping for com/ae2addon/highlighter/client/HighlightButton/mouseClicked(DDI)Z from net/minecraft/client/gui/components/AbstractWidget/mouseClicked(DDI)Z: mouseClicked -> m_6375_
+Conflicting propagated mapping for com/ae2addon/highlighter/client/CameraButton/onClick(DD)V from net/minecraft/client/gui/components/AbstractButton/onClick(DD)V: onClick -> m_5716_
+Conflicting propagated mapping for com/ae2addon/highlighter/client/CameraButton/renderWidget(Lnet/minecraft/client/gui/GuiGraphics;IIF)V from net/minecraft/client/gui/components/AbstractButton/renderWidget(Lnet/minecraft/client/gui/GuiGraphics;IIF)V: renderWidget -> m_87963_
 Conflicting propagated mapping for com/ae2addon/highlighter/client/HighlightButton/onClick(DD)V from net/minecraft/client/gui/components/AbstractButton/onClick(DD)V: onClick -> m_5716_
 Conflicting propagated mapping for com/ae2addon/highlighter/client/HighlightButton/isMouseOver(DD)Z from net/minecraft/client/gui/components/AbstractWidget/isMouseOver(DD)Z: isMouseOver -> m_5953_
 Conflicting propagated mapping for com/ae2addon/highlighter/client/HighlightButton/renderWidget(Lnet/minecraft/client/gui/GuiGraphics;IIF)V from net/minecraft/client/gui/components/AbstractButton/renderWidget(Lnet/minecraft/client/gui/GuiGraphics;IIF)V: renderWidget -> m_87963_
@@ -174,19 +181,34 @@ Writing Output: D:\Project\MOD\Minecraft\AE2\ae2-pattern-highlighter\build\reobf
   com/ae2addon/highlighter/
   com/ae2addon/highlighter/Ae2PatternHighlighter.class
   com/ae2addon/highlighter/client/
+  com/ae2addon/highlighter/client/CameraButton.class
+  com/ae2addon/highlighter/client/ChatCommandInterceptor.class
+  com/ae2addon/highlighter/client/ChatMessageBuilder.class
+  com/ae2addon/highlighter/client/ClientCommandHandler.class
+  com/ae2addon/highlighter/client/ClientProviderCache.class
   com/ae2addon/highlighter/client/ClientSetup.class
   com/ae2addon/highlighter/client/HighlightButton.class
   com/ae2addon/highlighter/client/HighlightButtonHandler.class
   com/ae2addon/highlighter/client/HighlightRenderer.class
+  com/ae2addon/highlighter/client/PendingCameraAction.class
   com/ae2addon/highlighter/client/ScreenClickHandler.class
+  com/ae2addon/highlighter/client/camera/
+  com/ae2addon/highlighter/client/camera/CameraInputHandler.class
+  com/ae2addon/highlighter/client/camera/CameraOverlayScreen.class
+  com/ae2addon/highlighter/client/camera/CameraTransition.class
+  com/ae2addon/highlighter/client/camera/FreeCameraController.class
+  com/ae2addon/highlighter/client/camera/FreeCameraRenderer.class
   com/ae2addon/highlighter/mixin/
+  com/ae2addon/highlighter/mixin/CameraMixin.class
   com/ae2addon/highlighter/mixin/CraftingCPUScreenMixin.class
   com/ae2addon/highlighter/mixin/WidgetContainerMixin.class
   com/ae2addon/highlighter/network/
   com/ae2addon/highlighter/network/HighlightInfo.class
   com/ae2addon/highlighter/network/HighlightPositionsPacket.class
   com/ae2addon/highlighter/network/ModNetworkHandler.class
+  com/ae2addon/highlighter/network/ProviderListPacket.class
   com/ae2addon/highlighter/network/RequestHighlightPacket.class
+  com/ae2addon/highlighter/network/RequestProviderListPacket.class
   com/ae2addon/highlighter/server/
   com/ae2addon/highlighter/server/PatternProviderLocator.class
   pack.mcmeta

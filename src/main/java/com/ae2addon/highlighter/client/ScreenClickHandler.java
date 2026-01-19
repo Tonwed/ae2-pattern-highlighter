@@ -32,9 +32,11 @@ public class ScreenClickHandler {
     private static final int BUTTON_SIZE = 10;
     private static final int BUTTON_OFFSET_X = 1;
     private static final int BUTTON_OFFSET_Y = 1;
+    private static final int BUTTON_SPACING = 2; // 按钮之间的间距
     
     // 缓存每个Screen的按钮
-    private static final WeakHashMap<Screen, List<HighlightButton>> screenButtons = new WeakHashMap<>();
+    private static final WeakHashMap<Screen, List<HighlightButton>> highlightButtons = new WeakHashMap<>();
+    private static final WeakHashMap<Screen, List<CameraButton>> cameraButtons = new WeakHashMap<>();
     private static final WeakHashMap<Screen, Integer> lastScrollOffset = new WeakHashMap<>();
     private static final WeakHashMap<Screen, Integer> lastEntryCount = new WeakHashMap<>();
     
@@ -43,27 +45,32 @@ public class ScreenClickHandler {
      * @return true 如果点击被我们的按钮处理
      */
     public static boolean handleButtonClick(Screen screen, double mouseX, double mouseY) {
-        List<HighlightButton> buttons = screenButtons.get(screen);
-        if (buttons == null) {
-            Ae2PatternHighlighter.LOGGER.info("handleButtonClick: no buttons for screen");
-            return false;
-        }
-        
-        Ae2PatternHighlighter.LOGGER.info("handleButtonClick: checking {} buttons at ({}, {})", 
-            buttons.size(), mouseX, mouseY);
-        
-        for (int i = 0; i < buttons.size(); i++) {
-            HighlightButton btn = buttons.get(i);
-            if (btn.visible) {
-                boolean isOver = btn.isMouseOver(mouseX, mouseY);
-                Ae2PatternHighlighter.LOGGER.info("  Button {}: pos=({},{}), size={}x{}, isOver={}", 
-                    i, btn.getX(), btn.getY(), btn.getWidth(), btn.getHeight(), isOver);
-                if (isOver) {
+        // 先检查问号按钮
+        List<HighlightButton> hButtons = highlightButtons.get(screen);
+        if (hButtons != null) {
+            for (int i = 0; i < hButtons.size(); i++) {
+                HighlightButton btn = hButtons.get(i);
+                if (btn.visible && btn.isMouseOver(mouseX, mouseY)) {
+                    Ae2PatternHighlighter.LOGGER.info("HighlightButton {} clicked", i);
                     btn.onClick(mouseX, mouseY);
                     return true;
                 }
             }
         }
+        
+        // 再检查眼镜按钮
+        List<CameraButton> cButtons = cameraButtons.get(screen);
+        if (cButtons != null) {
+            for (int i = 0; i < cButtons.size(); i++) {
+                CameraButton btn = cButtons.get(i);
+                if (btn.visible && btn.isMouseOver(mouseX, mouseY)) {
+                    Ae2PatternHighlighter.LOGGER.info("CameraButton {} clicked", i);
+                    btn.onClick(mouseX, mouseY);
+                    return true;
+                }
+            }
+        }
+        
         return false;
     }
     
@@ -71,14 +78,24 @@ public class ScreenClickHandler {
      * 检查鼠标是否在我们的按钮上
      */
     public static boolean isOverButton(Screen screen, double mouseX, double mouseY) {
-        List<HighlightButton> buttons = screenButtons.get(screen);
-        if (buttons == null) return false;
-        
-        for (HighlightButton btn : buttons) {
-            if (btn.visible && btn.isMouseOver(mouseX, mouseY)) {
-                return true;
+        List<HighlightButton> hButtons = highlightButtons.get(screen);
+        if (hButtons != null) {
+            for (HighlightButton btn : hButtons) {
+                if (btn.visible && btn.isMouseOver(mouseX, mouseY)) {
+                    return true;
+                }
             }
         }
+        
+        List<CameraButton> cButtons = cameraButtons.get(screen);
+        if (cButtons != null) {
+            for (CameraButton btn : cButtons) {
+                if (btn.visible && btn.isMouseOver(mouseX, mouseY)) {
+                    return true;
+                }
+            }
+        }
+        
         return false;
     }
     
@@ -162,36 +179,46 @@ public class ScreenClickHandler {
     }
     
     private static void createButtons(CraftingCPUScreen<?> screen, ScreenEvent.Init.Post event) {
-        List<HighlightButton> buttons = new ArrayList<>();
+        List<HighlightButton> hButtons = new ArrayList<>();
+        List<CameraButton> cButtons = new ArrayList<>();
         
         int guiLeft = getGuiLeft(screen);
         int guiTop = getGuiTop(screen);
         
-        // 为每个可见单元格位置创建一个按钮
+        // 为每个可见单元格位置创建两个按钮（问号和眼镜）
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
                 int cellX = TABLE_X + col * (CELL_WIDTH + CELL_BORDER);
                 int cellY = TABLE_Y + row * (CELL_HEIGHT + CELL_BORDER);
                 
-                int buttonX = guiLeft + cellX + BUTTON_OFFSET_X;
-                int buttonY = guiTop + cellY + BUTTON_OFFSET_Y;
+                // 问号按钮在左上
+                int highlightButtonX = guiLeft + cellX + BUTTON_OFFSET_X;
+                int highlightButtonY = guiTop + cellY + BUTTON_OFFSET_Y;
+                HighlightButton highlightButton = new HighlightButton(highlightButtonX, highlightButtonY, BUTTON_SIZE, BUTTON_SIZE);
+                highlightButton.visible = false;
+                hButtons.add(highlightButton);
+                event.addListener(highlightButton);
                 
-                HighlightButton button = new HighlightButton(buttonX, buttonY, BUTTON_SIZE, BUTTON_SIZE);
-                button.visible = false; // 初始隐藏
-                
-                buttons.add(button);
-                event.addListener(button);
+                // 眼镜按钮在问号按钮下方
+                int cameraButtonX = guiLeft + cellX + BUTTON_OFFSET_X;
+                int cameraButtonY = guiTop + cellY + BUTTON_OFFSET_Y + BUTTON_SIZE + BUTTON_SPACING;
+                CameraButton cameraButton = new CameraButton(cameraButtonX, cameraButtonY, BUTTON_SIZE, BUTTON_SIZE, null);
+                cameraButton.visible = false;
+                cButtons.add(cameraButton);
+                event.addListener(cameraButton);
             }
         }
         
-        screenButtons.put(screen, buttons);
+        highlightButtons.put(screen, hButtons);
+        cameraButtons.put(screen, cButtons);
         lastScrollOffset.put(screen, -1);
         lastEntryCount.put(screen, -1);
     }
     
     private static void updateButtons(CraftingCPUScreen<?> screen) {
-        List<HighlightButton> buttons = screenButtons.get(screen);
-        if (buttons == null) return;
+        List<HighlightButton> hButtons = highlightButtons.get(screen);
+        List<CameraButton> cButtons = cameraButtons.get(screen);
+        if (hButtons == null || cButtons == null) return;
         
         List<CraftingStatusEntry> entries = getEntries(screen);
         int scrollOffset = getScroll(screen);
@@ -212,24 +239,43 @@ public class ScreenClickHandler {
             for (int col = 0; col < COLS; col++) {
                 int entryIndex = (row + scrollOffset) * COLS + col;
                 
-                if (buttonIndex < buttons.size()) {
-                    HighlightButton button = buttons.get(buttonIndex);
+                if (buttonIndex < hButtons.size() && buttonIndex < cButtons.size()) {
+                    // 更新问号按钮
+                    HighlightButton hButton = hButtons.get(buttonIndex);
+                    CameraButton cButton = cButtons.get(buttonIndex);
                     
-                    // 更新按钮位置
+                    // 更新位置
                     int cellX = TABLE_X + col * (CELL_WIDTH + CELL_BORDER);
                     int cellY = TABLE_Y + row * (CELL_HEIGHT + CELL_BORDER);
-                    button.setX(guiLeft + cellX + BUTTON_OFFSET_X);
-                    button.setY(guiTop + cellY + BUTTON_OFFSET_Y);
+                    
+                    hButton.setX(guiLeft + cellX + BUTTON_OFFSET_X);
+                    hButton.setY(guiTop + cellY + BUTTON_OFFSET_Y);
+                    
+                    cButton.setX(guiLeft + cellX + BUTTON_OFFSET_X);
+                    cButton.setY(guiTop + cellY + BUTTON_OFFSET_Y + BUTTON_SIZE + BUTTON_SPACING);
                     
                     if (entryIndex < entries.size()) {
                         CraftingStatusEntry entry = entries.get(entryIndex);
-                        button.setEntry(entry);
-                        button.visible = true;
-                        button.active = true;
+                        hButton.setEntry(entry);
+                        hButton.visible = true;
+                        hButton.active = true;
+                        
+                        // 通过反射设置CameraButton的entry
+                        try {
+                            java.lang.reflect.Field entryField = CameraButton.class.getDeclaredField("entry");
+                            entryField.setAccessible(true);
+                            entryField.set(cButton, entry);
+                        } catch (Exception e) {
+                            // Ignore
+                        }
+                        cButton.visible = true;
+                        cButton.active = true;
+                        
                         visibleCount++;
                     } else {
-                        button.setEntry(null);
-                        button.visible = false;
+                        hButton.setEntry(null);
+                        hButton.visible = false;
+                        cButton.visible = false;
                     }
                 }
                 buttonIndex++;

@@ -41,6 +41,20 @@ public class ModNetworkHandler {
                 .decoder(HighlightPositionsPacket::decode)
                 .consumerMainThread(HighlightPositionsPacket::handle)
                 .add();
+        
+        // 客户端 -> 服务器: 请求provider列表（不触发高亮）
+        CHANNEL.messageBuilder(RequestProviderListPacket.class, nextId(), NetworkDirection.PLAY_TO_SERVER)
+                .encoder(RequestProviderListPacket::encode)
+                .decoder(RequestProviderListPacket::decode)
+                .consumerMainThread(RequestProviderListPacket::handle)
+                .add();
+        
+        // 服务器 -> 客户端: 返回provider列表并在聊天显示
+        CHANNEL.messageBuilder(ProviderListPacket.class, nextId(), NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(ProviderListPacket::encode)
+                .decoder(ProviderListPacket::decode)
+                .consumerMainThread(ProviderListPacket::handle)
+                .add();
     }
     
     public static void sendToServer(Object msg) {
