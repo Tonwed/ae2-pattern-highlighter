@@ -98,8 +98,20 @@ public class PatternProviderLocator {
                 Ae2PatternHighlighter.LOGGER.info("Found {} tasks, filtering by item", taskMap.size());
                 for (Object patternDetails : taskMap.keySet()) {
                     // 检查这个pattern是否输出我们要找的物品
-                    if (!patternProducesItem(patternDetails, targetWhat)) {
+                    boolean isOutput = patternProducesItem(patternDetails, targetWhat);
+                    boolean isInput = false;
+                    
+                    if (!isOutput) {
+                        // 检查是否作为原料消耗
+                        isInput = patternConsumesItem(patternDetails, targetWhat);
+                    }
+                    
+                    if (!isOutput && !isInput) {
                         continue; // 跳过不匹配的pattern
+                    }
+                    
+                    if (isInput) {
+                        Ae2PatternHighlighter.LOGGER.info("Found pattern consuming item: {}", targetWhat.getDisplayName().getString());
                     }
                     
                     // 通过CraftingService获取提供此样板的providers
@@ -108,11 +120,98 @@ public class PatternProviderLocator {
                 }
             }
             
+            // 如果在当前任务中没找到，尝试在整个网络中查找能合成该物品的接口
+            if (positions.isEmpty()) {
+                Ae2PatternHighlighter.LOGGER.info("No providers found in active tasks, searching entire network for: {}", targetWhat.getDisplayName().getString());
+                
+                Object craftingService = getCraftingService(cpu);
+                if (craftingService != null) {
+                    // ICraftingService.getCraftingFor(AEKey) -> Set<IPatternDetails>
+                    Object patterns = callMethod(craftingService, "getCraftingFor", targetWhat);
+                    
+                    if (patterns instanceof java.util.Collection<?> patternList) {
+                        Ae2PatternHighlighter.LOGGER.info("Found {} patterns in network for item", patternList.size());
+                        for (Object patternDetails : patternList) {
+                            List<BlockPos> providerPositions = findProvidersForPatternWithService(craftingService, patternDetails);
+                            for (BlockPos pos : providerPositions) {
+                                if (!positions.contains(pos)) {
+                                    positions.add(pos);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
         } catch (Exception e) {
             Ae2PatternHighlighter.LOGGER.error("Error finding pattern providers", e);
         }
         
         return positions;
+    }
+    
+    /**
+     * 获取CraftingService
+     */
+    private static Object getCraftingService(Object cpu) {
+        try {
+            // CraftingCPUCluster直接有getGrid()方法
+            Object grid = callMethod(cpu, "getGrid");
+            if (grid == null) {
+                // 备用：尝试通过getNode获取
+                Object gridNode = callMethod(cpu, "getNode");
+                if (gridNode != null) {
+                    grid = callMethod(gridNode, "getGrid");
+                }
+            }
+            
+            if (grid == null) return null;
+            
+            // 获取CraftingService
+            Object craftingService = callMethod(grid, "getCraftingService");
+            if (craftingService == null) {
+                craftingService = callMethodWithClass(grid, "getService", 
+                        "appeng.api.networking.crafting.ICraftingService");
+            }
+            return craftingService;
+        } catch (Exception e) {
+            Ae2PatternHighlighter.LOGGER.error("Error getting crafting service", e);
+            return null;
+        }
+    }
+
+    /**
+     * 查找提供特定样板的所有provider位置 (使用已知的Service)
+     */
+    private static List<BlockPos> findProvidersForPatternWithService(Object craftingService, Object patternDetails) {
+        List<BlockPos> positions = new ArrayList<>();
+        try {
+            // 获取providers
+            Object providers = callMethod(craftingService, "getProviders", patternDetails);
+            
+            if (providers instanceof Iterable<?> providerIterable) {
+                for (Object provider : providerIterable) {
+                    BlockPos pos = getProviderPosition(provider);
+                    if (pos != null && !positions.contains(pos)) {
+                        positions.add(pos);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Ae2PatternHighlighter.LOGGER.error("Error finding providers with service", e);
+        }
+        return positions;
+    }
+
+    /**
+     * 查找提供特定样板的所有provider位置 (旧方法，兼容)
+     */
+    private static List<BlockPos> findProvidersForPattern(Object cpu, Object patternDetails) {
+        Object craftingService = getCraftingService(cpu);
+        if (craftingService != null) {
+            return findProvidersForPatternWithService(craftingService, patternDetails);
+        }
+        return Collections.emptyList();
     }
     
     /**
@@ -146,107 +245,94 @@ public class PatternProviderLocator {
     }
     
     /**
-     * 检查pattern是否输出指定的物品
+     * 检查pattern是否输出指定的物品（支持模糊匹配）
      */
     private static boolean patternProducesItem(Object patternDetails, Object targetWhat) {
         try {
-            // IPatternDetails.getPrimaryOutput() 返回 GenericStack
+            // 1. 检查主输出
             Object primaryOutput = callMethod(patternDetails, "getPrimaryOutput");
             if (primaryOutput != null) {
-                // GenericStack.what() 返回 AEKey
                 Object outputWhat = callMethod(primaryOutput, "what");
-                if (outputWhat != null && outputWhat.equals(targetWhat)) {
-                    Ae2PatternHighlighter.LOGGER.debug("Pattern matches! Output: {}", outputWhat);
+                if (isKeyMatch(outputWhat, targetWhat)) {
+                    Ae2PatternHighlighter.LOGGER.debug("Pattern primary output matches: {}", outputWhat);
                     return true;
                 }
             }
             
-            // 也检查所有输出 getOutputs()
+            // 2. 检查所有输出
             Object outputs = callMethod(patternDetails, "getOutputs");
             if (outputs instanceof Object[] outputArray) {
                 for (Object output : outputArray) {
                     Object outputWhat = callMethod(output, "what");
-                    if (outputWhat != null && outputWhat.equals(targetWhat)) {
-                        Ae2PatternHighlighter.LOGGER.debug("Pattern matches via getOutputs! Output: {}", outputWhat);
+                    if (isKeyMatch(outputWhat, targetWhat)) {
+                        Ae2PatternHighlighter.LOGGER.debug("Pattern output matches: {}", outputWhat);
                         return true;
                     }
                 }
             }
         } catch (Exception e) {
-            Ae2PatternHighlighter.LOGGER.debug("Error checking pattern output: {}", e.getMessage());
+            Ae2PatternHighlighter.LOGGER.error("Error checking pattern output", e);
         }
         return false;
     }
-    
+
     /**
-     * 查找提供特定样板的所有provider位置
+     * 检查pattern是否消耗指定的物品（作为原料）
      */
-    private static List<BlockPos> findProvidersForPattern(Object cpu, Object patternDetails) {
-        List<BlockPos> positions = new ArrayList<>();
-        
+    private static boolean patternConsumesItem(Object patternDetails, Object targetWhat) {
         try {
-            Ae2PatternHighlighter.LOGGER.info("Finding providers for pattern: {}", patternDetails.getClass().getSimpleName());
-            
-            // CraftingCPUCluster直接有getGrid()方法
-            Object grid = callMethod(cpu, "getGrid");
-            Ae2PatternHighlighter.LOGGER.info("  getGrid() result: {}", grid != null ? grid.getClass().getSimpleName() : "null");
-            
-            if (grid == null) {
-                // 备用：尝试通过getNode获取
-                Object gridNode = callMethod(cpu, "getNode");
-                Ae2PatternHighlighter.LOGGER.info("  getNode() result: {}", gridNode != null ? gridNode.getClass().getSimpleName() : "null");
-                if (gridNode != null) {
-                    grid = callMethod(gridNode, "getGrid");
-                    Ae2PatternHighlighter.LOGGER.info("  Grid from node: {}", grid != null ? grid.getClass().getSimpleName() : "null");
-                }
-            }
-            
-            if (grid == null) {
-                Ae2PatternHighlighter.LOGGER.warn("  Could not find grid");
-                return positions;
-            }
-            
-            // 获取CraftingService - 使用IGrid.getCraftingService()
-            Object craftingService = callMethod(grid, "getCraftingService");
-            if (craftingService == null) {
-                craftingService = callMethodWithClass(grid, "getService", 
-                        "appeng.api.networking.crafting.ICraftingService");
-            }
-            
-            Ae2PatternHighlighter.LOGGER.info("  CraftingService: {}", craftingService != null ? craftingService.getClass().getSimpleName() : "null");
-            
-            if (craftingService == null) {
-                return positions;
-            }
-            
-            // 获取providers
-            Object providers = callMethod(craftingService, "getProviders", patternDetails);
-            Ae2PatternHighlighter.LOGGER.info("  Providers result: {}", providers != null ? providers.getClass().getSimpleName() : "null");
-            
-            if (providers == null) {
-                return positions;
-            }
-            
-            // 遍历providers获取位置
-            if (providers instanceof Iterable<?> providerIterable) {
-                int providerCount = 0;
-                for (Object provider : providerIterable) {
-                    providerCount++;
-                    Ae2PatternHighlighter.LOGGER.info("    Provider {}: {}", providerCount, provider.getClass().getSimpleName());
-                    BlockPos pos = getProviderPosition(provider);
-                    if (pos != null && !positions.contains(pos)) {
-                        positions.add(pos);
-                        Ae2PatternHighlighter.LOGGER.info("    Found position: {}", pos);
+            Object inputs = callMethod(patternDetails, "getInputs");
+            if (inputs instanceof Object[] inputArray) {
+                for (Object input : inputArray) {
+                    // input 可能是 GenericStack 或 IInput
+                    // 如果是 GenericStack
+                    Object inputWhat = callMethod(input, "what");
+                    if (inputWhat == null) {
+                        // 尝试 IInput.getPossibleInputs() -> AEKey[]
+                        Object possibleInputs = callMethod(input, "getPossibleInputs");
+                        if (possibleInputs instanceof Object[] keys) {
+                            for (Object key : keys) {
+                                if (isKeyMatch(key, targetWhat)) {
+                                    return true;
+                                }
+                            }
+                        }
+                    } else {
+                         if (isKeyMatch(inputWhat, targetWhat)) {
+                             return true;
+                         }
                     }
                 }
-                Ae2PatternHighlighter.LOGGER.info("  Total providers: {}, positions found: {}", providerCount, positions.size());
             }
-            
         } catch (Exception e) {
-            Ae2PatternHighlighter.LOGGER.error("Error finding providers for pattern", e);
+            Ae2PatternHighlighter.LOGGER.debug("Error checking pattern inputs: {}", e.getMessage());
         }
+        return false;
+    }
+
+    /**
+     * 判断两个AEKey是否匹配（支持精确匹配和模糊匹配）
+     */
+    private static boolean isKeyMatch(Object key1, Object key2) {
+        if (key1 == null || key2 == null) return false;
+        if (key1.equals(key2)) return true;
         
-        return positions;
+        // 模糊匹配：比较定义是否相同（忽略NBT等）
+        if (key1 instanceof AEKey k1 && key2 instanceof AEKey k2) {
+            // 如果类型不同（如流体 vs 物品），直接返回false
+            if (k1.getType() != k2.getType()) return false;
+            
+            // 比较 drop (去除NBT后的基本对象)
+            // 实际上 AEKey 没有直接暴露 getDefinition()，但我们可以利用 dropSecondary() 或类似机制
+            // 或者比较他们的 Primary Object
+            Object def1 = k1.getPrimaryKey();
+            Object def2 = k2.getPrimaryKey();
+            if (def1 != null && def1.equals(def2)) {
+                 Ae2PatternHighlighter.LOGGER.debug("Fuzzy match success: {} ~= {}", k1, k2);
+                 return true;
+            }
+        }
+        return false;
     }
     
     /**

@@ -36,6 +36,21 @@ public class CameraOverlayScreen extends Screen {
                 button -> exitCamera())
                 .bounds(buttonX, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT)
                 .build());
+
+        FreeCameraController controller = FreeCameraController.getInstance();
+        if (controller.hasMultipleTargets()) {
+            // 上一个
+            this.addRenderableWidget(Button.builder(Component.literal("<"), 
+                btn -> controller.prevTarget())
+                .bounds(buttonX - 25, buttonY, 20, 20)
+                .build());
+
+            // 下一个
+            this.addRenderableWidget(Button.builder(Component.literal(">"), 
+                btn -> controller.nextTarget())
+                .bounds(buttonX + BUTTON_WIDTH + 5, buttonY, 20, 20)
+                .build());
+        }
     }
     
     @Override
@@ -65,6 +80,10 @@ public class CameraOverlayScreen extends Screen {
         
         // 在顶部显示提示文本
         String hint = "§e鼠标滚轮 §7调整距离 | §e自动旋转 §7观察接口";
+        FreeCameraController controller = FreeCameraController.getInstance();
+        if (controller.hasMultipleTargets()) {
+             hint += String.format(" | §b目标 §f%d/%d", controller.getCurrentTargetIndex() + 1, controller.getTargetCount());
+        }
         int textWidth = this.font.width(hint);
         guiGraphics.drawString(this.font, hint, (this.width - textWidth) / 2, 10, 0xFFFFFF, true);
     }

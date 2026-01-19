@@ -1,6 +1,5 @@
 package com.ae2addon.highlighter.network;
 
-import com.ae2addon.highlighter.client.HighlightRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
@@ -28,6 +27,10 @@ public class HighlightPositionsPacket {
         return new HighlightPositionsPacket(highlights);
     }
     
+    public List<HighlightInfo> getHighlights() {
+        return highlights;
+    }
+    
     public static void encode(HighlightPositionsPacket msg, FriendlyByteBuf buf) {
         buf.writeVarInt(msg.highlights.size());
         for (HighlightInfo info : msg.highlights) {
@@ -47,7 +50,9 @@ public class HighlightPositionsPacket {
     public static void handle(HighlightPositionsPacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             // 在客户端添加高亮
-            HighlightRenderer.addHighlights(msg.highlights);
+            net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT, () -> () -> {
+                com.ae2addon.highlighter.client.ClientPacketHandler.handleHighlightPositions(msg);
+            });
         });
         ctx.get().setPacketHandled(true);
     }

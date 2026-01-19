@@ -1,12 +1,8 @@
 package com.ae2addon.highlighter.network;
 
 import appeng.api.stacks.AEKey;
-import com.ae2addon.highlighter.client.ChatMessageBuilder;
-import com.ae2addon.highlighter.client.PendingCameraAction;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.ArrayList;
@@ -43,25 +39,20 @@ public class ProviderListPacket {
         return new ProviderListPacket(positions, itemWhat);
     }
     
+    public List<BlockPos> getPositions() {
+        return positions;
+    }
+    
+    public AEKey getItemWhat() {
+        return itemWhat;
+    }
+    
     public static void handle(ProviderListPacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            Minecraft mc = Minecraft.getInstance();
-            if (mc.player == null) return;
-            
-            // 检查是否有待处理的相机动作
-            if (PendingCameraAction.hasPending()) {
-                // 触发相机观察第一个provider
-                if (!msg.positions.isEmpty()) {
-                    com.ae2addon.highlighter.client.camera.FreeCameraController.getInstance()
-                        .startObservation(msg.positions.get(0));
-                } else {
-                    mc.player.sendSystemMessage(Component.literal("§c未找到样板接口"));
-                }
-                PendingCameraAction.clear();
-            } else {
-                // 在聊天中显示provider列表，包含可点击的按钮
-                ChatMessageBuilder.sendProviderListMessage(mc.player, msg.positions, msg.itemWhat);
-            }
+            // 使用DistExecutor确保只在客户端执行客户端代码
+            net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT, () -> () -> {
+                com.ae2addon.highlighter.client.ClientPacketHandler.handleProviderList(msg);
+            });
         });
         ctx.get().setPacketHandled(true);
     }

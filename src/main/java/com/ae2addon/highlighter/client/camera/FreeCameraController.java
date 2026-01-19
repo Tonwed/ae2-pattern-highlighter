@@ -6,6 +6,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 自由相机控制器 - 管理相机观察模式的状态和动画
  */
@@ -28,6 +31,9 @@ public class FreeCameraController {
     private static final float ROTATION_SPEED = 0.5f; // 度/tick - 降低旋转速度让其更丝滑
     private static final int TRANSITION_DURATION = 60; // 3秒 - 增加过渡时间让其更丝滑
     
+    private List<BlockPos> targets = new ArrayList<>();
+    private int currentTargetIndex = 0;
+    
     private FreeCameraController() {}
     
     public static FreeCameraController getInstance() {
@@ -35,21 +41,53 @@ public class FreeCameraController {
     }
     
     /**
-     * 开始观察模式
+     * 开始观察模式 (单个目标)
      */
     public void startObservation(BlockPos target) {
+        List<BlockPos> list = new ArrayList<>();
+        list.add(target);
+        startObservation(list);
+    }
+
+    /**
+     * 开始观察模式 (多个目标)
+     */
+    public void startObservation(List<BlockPos> targets) {
+        if (targets == null || targets.isEmpty()) return;
+        
+        this.targets = targets;
+        this.currentTargetIndex = 0;
+        startObservationInternal(this.targets.get(0));
+    }
+    
+    private void startObservationInternal(BlockPos target) {
         Minecraft mc = Minecraft.getInstance();
         Player player = mc.player;
         if (player == null) return;
         
-        // 保存原始位置和视角
-        originalPlayerPos = player.position();
-        originalYaw = player.getYRot();
-        originalPitch = player.getXRot();
+        // 如果已经在观察模式，从当前位置开始过渡
+        Vec3 startPos;
+        float startYaw, startPitch;
+        
+        if (active) {
+            startPos = getCurrentCameraPosition();
+            startYaw = getCurrentYaw();
+            startPitch = getCurrentPitch();
+        } else {
+            // 保存原始位置和视角
+            originalPlayerPos = player.position();
+            originalYaw = player.getYRot();
+            originalPitch = player.getXRot();
+            
+            startPos = originalPlayerPos.add(0, player.getEyeHeight(), 0);
+            startYaw = originalYaw;
+            startPitch = originalPitch;
+        }
         
         targetPos = target;
         active = true;
-        rotationAngle = 0;
+        // 保持当前的旋转角度，或者是0
+        if (!active) rotationAngle = 0;
         
         // 计算初始相机位置（在目标上方斜视）
         Vec3 initialCameraPos = calculateCameraPosition();
@@ -62,21 +100,53 @@ public class FreeCameraController {
         
         // 创建过渡动画
         transition = new CameraTransition(
-            originalPlayerPos.add(0, player.getEyeHeight(), 0),
+            startPos,
             initialCameraPos,
-            originalYaw,
+            startYaw,
             targetYaw,
-            originalPitch,
+            startPitch,
             targetPitch,
             TRANSITION_DURATION
         );
         
-        Ae2PatternHighlighter.LOGGER.info("Started camera observation at {}", targetPos);
+        Ae2PatternHighlighter.LOGGER.info("Started or switched camera observation to {}", targetPos);
         
-        // 显示overlay UI
-        mc.setScreen(new CameraOverlayScreen());
+        // 显示overlay UI (如果还没显示)
+        if (!(mc.screen instanceof CameraOverlayScreen)) {
+            mc.setScreen(new CameraOverlayScreen());
+        }
     }
     
+    /**
+     * 切换到下一个目标
+     */
+    public void nextTarget() {
+        if (targets.isEmpty()) return;
+        currentTargetIndex = (currentTargetIndex + 1) % targets.size();
+        startObservationInternal(targets.get(currentTargetIndex));
+    }
+    
+    /**
+     * 切换到上一个目标
+     */
+    public void prevTarget() {
+        if (targets.isEmpty()) return;
+        currentTargetIndex = (currentTargetIndex - 1 + targets.size()) % targets.size();
+        startObservationInternal(targets.get(currentTargetIndex));
+    }
+    
+    public boolean hasMultipleTargets() {
+        return targets != null && targets.size() > 1;
+    }
+    
+    public int getCurrentTargetIndex() {
+        return currentTargetIndex;
+    }
+    
+    public int getTargetCount() {
+        return targets != null ? targets.size() : 0;
+    }
+
     /**
      * 退出观察模式
      */
@@ -104,6 +174,7 @@ public class FreeCameraController {
         
         // 标记为退出中（过渡完成后才真正退出）
         active = false;
+        targets.clear();
         
         Ae2PatternHighlighter.LOGGER.info("Exiting camera observation");
     }

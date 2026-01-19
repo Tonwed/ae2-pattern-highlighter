@@ -53,11 +53,18 @@ public class FreeCameraRenderer {
         poseStack.pushPose();
         poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
         
-        // 渲染脉冲效果的方块边框
-        renderPulsingBox(poseStack, buffers, targetPos, System.currentTimeMillis());
+        try {
+            // 渲染脉冲效果的方块边框
+            renderPulsingBox(poseStack, buffers, targetPos, System.currentTimeMillis());
+        } catch (Exception e) {
+            // 防止渲染崩溃导致游戏崩溃
+            e.printStackTrace();
+        }
         
         poseStack.popPose();
-        buffers.endBatch();
+        
+        // 只刷新我们使用的RenderType，避免影响其他模组
+        buffers.endBatch(RenderType.lines());
     }
     
     /**

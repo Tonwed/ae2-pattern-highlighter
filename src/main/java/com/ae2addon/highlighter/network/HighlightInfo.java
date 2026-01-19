@@ -1,6 +1,5 @@
 package com.ae2addon.highlighter.network;
 
-import com.ae2addon.highlighter.client.HighlightRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
