@@ -17,9 +17,15 @@ public class CameraOverlayScreen extends Screen {
         super(Component.literal("Camera Observation"));
     }
     
+    private boolean originalHideGui;
+    
     @Override
     protected void init() {
         super.init();
+        
+        // 保存并设置隐藏GUI
+        this.originalHideGui = this.minecraft.options.hideGui;
+        this.minecraft.options.hideGui = true;
         
         // 在屏幕底部中央添加退出按钮
         int buttonX = (this.width - BUTTON_WIDTH) / 2;
@@ -33,13 +39,31 @@ public class CameraOverlayScreen extends Screen {
     }
     
     @Override
+    public void removed() {
+        super.removed();
+        // 恢复GUI显示状态
+        if (this.minecraft != null) {
+            this.minecraft.options.hideGui = this.originalHideGui;
+        }
+    }
+    
+    @Override
+    public void renderBackground(GuiGraphics guiGraphics) {
+        // 不渲染背景，保持透明
+    }
+    
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        FreeCameraController.getInstance().adjustDistance(delta);
+        return true;
+    }
+    
+    @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        // 不渲染背景（完全透明）
-        
-        // 渲染按钮
+        // 不渲染背景（完全透明）但需调用super渲染buttons
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         
-        // 可选：在顶部显示提示文本
+        // 在顶部显示提示文本
         String hint = "§e鼠标滚轮 §7调整距离 | §e自动旋转 §7观察接口";
         int textWidth = this.font.width(hint);
         guiGraphics.drawString(this.font, hint, (this.width - textWidth) / 2, 10, 0xFFFFFF, true);

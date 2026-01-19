@@ -23,10 +23,10 @@ public class FreeCameraController {
     private float rotationAngle = 0.0f; // 轨道旋转角度
     private float elevation = 30.0f; // 仰角（度）
     
-    private static final float MIN_DISTANCE = 3.0f;
-    private static final float MAX_DISTANCE = 15.0f;
-    private static final float ROTATION_SPEED = 1.0f; // 度/tick
-    private static final int TRANSITION_DURATION = 40; // 2秒
+    private static final float MIN_DISTANCE = 2.0f;
+    private static final float MAX_DISTANCE = 20.0f;
+    private static final float ROTATION_SPEED = 0.5f; // 度/tick - 降低旋转速度让其更丝滑
+    private static final int TRANSITION_DURATION = 60; // 3秒 - 增加过渡时间让其更丝滑
     
     private FreeCameraController() {}
     

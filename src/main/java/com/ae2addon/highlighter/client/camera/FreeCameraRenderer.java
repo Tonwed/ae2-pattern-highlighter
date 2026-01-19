@@ -17,6 +17,17 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 public class FreeCameraRenderer {
     
     /**
+     * 隐藏玩家手部
+     */
+    @SubscribeEvent
+    public static void onRenderHand(net.minecraftforge.client.event.RenderHandEvent event) {
+        FreeCameraController controller = FreeCameraController.getInstance();
+        if (controller.isActive()) {
+            event.setCanceled(true);
+        }
+    }
+
+    /**
      * 渲染目标方块的脉冲高亮
      */
     @SubscribeEvent
