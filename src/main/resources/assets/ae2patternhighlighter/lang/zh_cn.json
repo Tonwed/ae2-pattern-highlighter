@@ -1,0 +1,6 @@
+{
+    "itemGroup.ae2patternhighlighter": "AE2 样板接口高亮",
+    "ae2patternhighlighter.button.locate": "定位样板接口",
+    "ae2patternhighlighter.message.found": "找到 %d 个样板接口:",
+    "ae2patternhighlighter.message.none": "未找到此物品对应的样板接口"
+}

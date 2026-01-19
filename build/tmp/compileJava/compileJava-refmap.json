@@ -1,0 +1,14 @@
+{
+  "mappings": {
+    "com/ae2addon/highlighter/mixin/CraftingCPUScreenMixin": {
+      "mouseClicked(DDI)Z": "Lappeng/client/gui/AEBaseScreen;m_6375_(DDI)Z"
+    }
+  },
+  "data": {
+    "searge": {
+      "com/ae2addon/highlighter/mixin/CraftingCPUScreenMixin": {
+        "mouseClicked(DDI)Z": "Lappeng/client/gui/AEBaseScreen;m_6375_(DDI)Z"
+      }
+    }
+  }
+}
