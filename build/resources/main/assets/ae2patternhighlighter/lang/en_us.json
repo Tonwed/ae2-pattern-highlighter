@@ -1,6 +1,0 @@
-{
-    "itemGroup.ae2patternhighlighter": "AE2 Pattern Highlighter",
-    "ae2patternhighlighter.button.locate": "Locate Pattern Providers",
-    "ae2patternhighlighter.message.found": "Found %d pattern providers:",
-    "ae2patternhighlighter.message.none": "No pattern providers found for this item"
-}
